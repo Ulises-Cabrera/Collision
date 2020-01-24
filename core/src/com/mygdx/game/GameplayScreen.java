@@ -1,75 +1,72 @@
 package com.mygdx.game;
 
 import com.badlogic.gdx.Gdx;
-import com.badlogic.gdx.InputAdapter;
-import com.badlogic.gdx.ScreenAdapter;
-import com.badlogic.gdx.graphics.Camera;
 import com.badlogic.gdx.graphics.GL20;
-import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
-import com.badlogic.gdx.utils.viewport.ExtendViewport;
-import com.badlogic.gdx.utils.viewport.Viewport;
+import com.badlogic.gdx.math.Vector2;
+import com.badlogic.gdx.math.Vector3;
+import com.badlogic.gdx.physics.box2d.World;
+import com.badlogic.gdx.scenes.scene2d.Stage;
+import com.badlogic.gdx.utils.viewport.FitViewport;
 
-public class GameplayScreen extends ScreenAdapter {
+public class GameplayScreen extends BaseScreen {
 
-    private Level level;
     private SpriteBatch batch;
-    private Viewport viewport;
+    private Player player;
+    private Block block;
+    private World world;
+    private Stage stage;
+    private Vector3 position;
 
-    GameplayScreen() {
+    GameplayScreen(GdxGame game) {
+        super(game);
         Gdx.graphics.setContinuousRendering(true);
         batch = new SpriteBatch();
+        world = new World(new Vector2(0, 0), true);
         initCamera();
-        level = new Level(viewport);
     }
 
     private void initCamera() {
-        OrthographicCamera camera = new OrthographicCamera();
-        camera.zoom = 1;
-        viewport = new ExtendViewport(Gdx.graphics.getWidth(), Gdx.graphics.getHeight(), camera);
-        Gdx.input.setInputProcessor(new InputControl(camera));
+        stage = new Stage(new FitViewport(640, 360));
+        stage.setDebugAll(true);
+        position = new Vector3(stage.getCamera().position);
     }
 
     @Override
     public void show() {
+        player = new Player(world, game.getManager().get("skelleton.png"), new Vector2(1.5f, 1.5f));
+        block = new Block(world, game.getManager().get("block.png"), new Vector2(6.5f, 1f));
+        stage.addActor(player);
+        stage.addActor(block);
+        stage.getCamera().position.set(position);
+        stage.getCamera().update();
     }
 
     @Override
     public void resize(int width, int height) {
-        viewport.update(width, height, true);
     }
 
     @Override
     public void dispose() {
         batch.dispose();
-        level.dispose();
+        stage.dispose();
+        world.dispose();
     }
 
     @Override
     public void render(float delta) {
-        Gdx.gl.glClearColor(0f, 0.201f, 0.253f, 1f);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
-        batch.begin();
-        level.render();
-        batch.end();
+        Gdx.gl.glClearColor(0f, 0.201f, 0.253f, 1f);
+        stage.act();
+        world.step(delta, 6, 2);
+        stage.draw();
     }
 
-    private static class InputControl extends InputAdapter {
-        private OrthographicCamera camera;
-
-        InputControl(OrthographicCamera camera) {
-            this.camera = camera;
-        }
-
-        @Override
-        public boolean touchDragged(int screenX, int screenY, int pointer) {
-            float factorMovimientoGesture = 5.5f;
-            float x = (Gdx.input.getDeltaX() / factorMovimientoGesture) * 2;
-            float y = (Gdx.input.getDeltaY() / factorMovimientoGesture) * 2;
-
-            camera.translate(-x, y);
-            camera.update();
-            return true;
-        }
+    @Override
+    public void hide() {
+        stage.clear();
+        player.detach();
+        block.detach();
     }
+
 }
